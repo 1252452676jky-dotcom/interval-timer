@@ -113,6 +113,9 @@ input[type=range]{flex:1;min-width:120px}
 .tl.cur{background:rgba(255,255,255,.2)}
 @media(max-width:760px){.tt-body{flex-direction:column}.tt-list{width:auto;max-height:34vh}}
 @media(max-width:420px){#app{padding-left:10px;padding-right:10px}.row{padding:10px}.dur input{width:42px}.acts{gap:12px}}
+.cloudbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--mut);margin:0 0 6px}
+.cloudbar span{flex:1;min-width:180px;word-break:break-all}
+.cloudbar:empty{display:none}
 </style>
 </head>
 <body>
@@ -160,10 +163,25 @@ const Store = {
     catch(e){ MEM = data; console.warn('Browser storage unavailable – changes will not persist after reload.', e); }
   }
 };
-function save(){ Store.save(S); }
-function blank(){ return {version:1, settings:{...DEF}, folders:[], workouts:[], combos:[], schedule:{}}; }
+function save(){ S.updatedAt = Date.now(); Store.save(S); if (window.Cloud) Cloud.push(); }
+function blank(){ return {version:1, updatedAt:0, settings:{...DEF}, folders:[], workouts:[], combos:[], schedule:{}}; }
+
+/* ---- bridge used by the Firebase module ---- */
+function getData(){ return S; }
+function replaceData(d){ S = d; normalize(); Store.save(S); render(); }
+let CLOUD = {state:'off', msg:'', email:'', uid:''};
+function setCloud(c){ CLOUD = {...CLOUD, ...c}; const el = document.getElementById('cloudBar'); if (el) el.innerHTML = cloudInner(); }
+function cloudInner(){
+  const c = CLOUD;
+  if (c.state === 'off') return '';
+  if (c.state === 'signedout') return `<span>Saved on this device only${c.msg ? ' · ' + esc(c.msg) : ''}</span><button class="pri" onclick="Cloud.signIn()">Sign in with Google</button>`;
+  const txt = {loading:'Connecting…', syncing:'Syncing…', synced:'✓ Synced', denied:'Permission denied – check Firestore rules', error:'Sync problem: ' + c.msg}[c.state] || '';
+  return `<span>${esc(txt)}${c.email ? ' · ' + esc(c.email) : ''}${c.state === 'denied' && c.uid ? `<br>Your UID: <code>${esc(c.uid)}</code>` : ''}</span>${c.state === 'loading' ? '' : '<button onclick="Cloud.signOut()">Sign out</button>'}`;
+}
+
 
 function normalize(){
+if (typeof S.updatedAt !== 'number') S.updatedAt = 0;
   S.settings = {...DEF, ...(S.settings||{})};
   S.folders = S.folders || []; S.workouts = S.workouts || []; S.combos = S.combos || []; S.schedule = S.schedule || {};
   for (let d=0; d<7; d++) S.schedule[d] = S.schedule[d] || [];
@@ -555,6 +573,7 @@ function vHome(){
     </div>${f && f.collapsed ? '' : (ws.length ? ws.map(wRow).join('') : '<div class="empty">Empty folder</div>')}</div>`;
   const uf = unfiled();
   return `<div class="top"><h1>Interval Timer</h1><button class="ic" onclick="A.go('settings')" aria-label="Settings">⚙</button></div>
+  <div id="cloudBar" class="cloudbar">${cloudInner()}</div>
   <div class="sec"><h2>Today · ${DAYS[d]}</h2><button class="ghost" onclick="A.go('schedule')">Edit week</button></div>
   <div class="card">${today || '<div class="empty">Nothing scheduled today. Tap "Edit week" to assign workouts to days.</div>'}</div>
   <div class="sec"><h2>Combos</h2><button class="ghost" onclick="A.newCombo()">+ New combo</button></div>
@@ -662,7 +681,7 @@ function vSettings(){
   </div>
   <div class="sec"><h2>Backup</h2></div>
   <div class="card"><div class="field"><span class="lbl">Save everything as a JSON file, then import it on another device or browser.</span></div>
-    <div class="field"><button onclick="A.exportData()">Export JSON</button><button onclick="A.importData()">Import JSON</button><button class="dan" onclick="A.resetAll()">Erase all data</button></div></div>`;
+    <div class="field"><button onclick="A.exportData()">Export JSON</button><button onclick="A.importData()">Import JSON</button><button class="dan" onclick="A.resetAll()">Workouts, combos and schedule will be deleted on this device AND in the cloud if signed in. Export first if unsure.</button></div></div>`;
 }
 
 function vTimer(){
@@ -810,7 +829,7 @@ window.A = A;
 /* ================= init (kept last so everything above is defined first) ================= */
 S = Store.load();
 if (!S || !Array.isArray(S.workouts)) { S = blank(); seed(); }
-normalize(); save();
+normalize(); Store.save(S);
 
 history.replaceState(V, '');
 addEventListener('popstate', e => {
@@ -844,5 +863,73 @@ document.getElementById('importFile').addEventListener('change', e => {
 
 render();
 </script>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js';
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
+
+// 1) Paste from Firebase console > Project settings > Your apps > Config
+const firebaseConfig = {
+  apiKey: "AIzaSyCpmyi66LgzkAxLQ4eFhTJuTrL7rIvIX0E",
+  authDomain: "interval-timer-a3713.firebaseapp.com",
+  projectId: "interval-timer-a3713",
+  storageBucket: "interval-timer-a3713.firebasestorage.app",
+  messagingSenderId: "322385178334",
+  appId: "1:322385178334:web:1ea2998c3954a5e8e6dc4f"
+};
+// 2) After your first sign-in, paste your UID here (it's shown in the app). Leave '' until then.
+const OWNER_UID = '';
+
+if (firebaseConfig.apiKey && firebaseConfig.apiKey !== 'PASTE') {
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  let ref = null, unsub = null, pushTimer = null, ready = false, note = '';
+  const status = (state, msg = '') => setCloud({ state, msg, email: auth.currentUser?.email || '', uid: auth.currentUser?.uid || '' });
+  const why = e => (e && (e.code || e.message)) || 'unknown error';
+  const fail = e => status(e.code === 'permission-denied' ? 'denied' : 'error', why(e));
+
+  window.Cloud = {
+    async signIn() {
+      try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+      catch (e) { if (!['auth/popup-closed-by-user', 'auth/cancelled-popup-request'].includes(e.code)) status('signedout', why(e)); }
+    },
+    signOut() { return fbSignOut(auth); },
+    push() {
+      if (!ready || !ref) return;
+      clearTimeout(pushTimer);
+      status('syncing');
+      pushTimer = setTimeout(async () => {
+        const d = getData();
+        try { await setDoc(ref, { updatedAt: d.updatedAt, data: JSON.stringify(d) }); status('synced'); }
+        catch (e) { fail(e); }
+      }, 800);
+    }
+  };
+  status('loading');
+
+  onAuthStateChanged(auth, async user => {
+    ready = false; ref = null;
+    if (unsub) { unsub(); unsub = null; }
+    if (!user) { status('signedout', note); note = ''; return; }
+    if (OWNER_UID && user.uid !== OWNER_UID) { note = 'That account is not allowed'; await fbSignOut(auth); return; }
+    status('syncing');
+    ref = doc(db, 'users', user.uid);
+    try {
+      const snap = await getDoc(ref);
+      const cloud = snap.exists() ? snap.data() : null;
+      if (cloud && cloud.updatedAt >= getData().updatedAt) replaceData(JSON.parse(cloud.data)); // cloud is newer
+      ready = true;
+      if (!cloud || cloud.updatedAt < getData().updatedAt) Cloud.push(); else status('synced'); // this device is newer
+      unsub = onSnapshot(ref, s => {            // live updates from your other devices
+        if (!s.exists() || s.metadata.hasPendingWrites) return;
+        const r = s.data();
+        if (r.updatedAt > getData().updatedAt) { replaceData(JSON.parse(r.data)); status('synced'); }
+      }, fail);
+    } catch (e) { fail(e); }
+  });
+}
+</script>
+
 </body>
 </html>
