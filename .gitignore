@@ -1,0 +1,12 @@
+# personal backups exported from the app
+interval-timer-*.json
+# Firebase CLI (for later)
+.firebase/
+firebase-debug.log
+firestore-debug.log
+*-firebase-adminsdk-*.json
+# misc
+node_modules/
+.env
+.DS_Store
+Thumbs.db
