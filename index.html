@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#121418">
 <title>Interval Timer</title>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+<meta name="apple-mobile-web-app-title" content="Timer">
 <style>
 :root{--bg:#121418;--card:#1c1f26;--card2:#252a33;--line:#2f3540;--text:#e9edf3;--mut:#8b94a3;--acc:#4f8cff;--danger:#ff5a5f;--r:12px}
 *{box-sizing:border-box}
@@ -34,7 +39,6 @@ button.ghost{background:transparent;border-color:transparent}
 .stripe{width:6px;align-self:stretch;border-radius:4px;flex:none;min-height:34px}
 .play{background:var(--acc);border:none;color:#fff;width:40px;height:40px;border-radius:50%;padding:0;flex:none;display:inline-flex;align-items:center;justify-content:center}
 .empty{padding:14px;color:var(--mut);font-size:14px}
-/* action icons: duplicate · delete · drag, spaced apart for fingers */
 .acts{display:flex;align-items:center;gap:14px;margin-left:6px;flex:none}
 .act{width:40px;height:40px;padding:0;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:1px solid transparent;border-radius:10px;color:var(--mut);cursor:pointer}
 .act:hover{background:var(--card2);color:var(--text);filter:none}
@@ -53,6 +57,8 @@ select.grow{flex:1}
 .dur{display:inline-flex;align-items:center;gap:3px;flex:none}
 .dur b{color:var(--mut)}
 .dur input,.num{width:52px;font:inherit;color:var(--text);background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:8px 4px;text-align:center}
+.stepper{display:inline-flex;align-items:center;gap:8px;flex:none}
+.stepper .act{border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:22px;line-height:1}
 .sw{position:relative;width:46px;height:26px;flex:none;display:inline-block}
 .sw input{opacity:0;width:0;height:0}
 .sw span{position:absolute;inset:0;background:#444b57;border-radius:20px;transition:.2s;cursor:pointer}
@@ -72,10 +78,13 @@ input[type=color]{width:34px;height:34px;border:none;background:none;padding:0;c
 .fold-h .t{flex:1;font-weight:700}
 .badge{font-size:12px;color:var(--mut)}
 .preview{border-radius:var(--r);padding:22px;text-align:center;margin-bottom:12px}
-.preview .pn{font-size:26px;font-weight:800}
+.preview .pn{font-size:26px;font-weight:800;word-break:break-word}
 .preview .pt{font-size:44px;font-weight:700;font-variant-numeric:tabular-nums}
+.excard{margin-top:10px}
+.exhead{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 10px;background:var(--card2)}
+.exhead .stripe{min-height:28px}
+.exhead .t{flex:1;min-width:0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 input[type=range]{flex:1;min-width:120px}
-/* modal popups */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;width:min(380px,100%);box-shadow:0 20px 60px rgba(0,0,0,.6)}
 .modal h3{margin:0 0 8px;font-size:18px;word-break:break-word}
@@ -84,7 +93,6 @@ input[type=range]{flex:1;min-width:120px}
 .mbtns{display:flex;gap:12px;justify-content:flex-end;margin-top:8px}
 .mbtns button{min-width:100px}
 .menu button{display:block;width:100%;text-align:left;margin-top:10px;padding:12px 14px}
-/* timer */
 #timer{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;transition:background-color .35s,color .35s;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
 .tt-top{display:flex;align-items:center;gap:10px;padding:10px 14px}
 .tt-title{flex:1;font-weight:600;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -129,6 +137,7 @@ const WARM = '#fdd835', COOL = '#26c6da', REST = '#455a64';
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const DEF = {tts:true, voice:'', rate:1, volume:1, countdown:'beep', startBeep:true, announceNext:true, announceSets:true,
              defaultRest:15, warmup:10, cooldown:10, restColor:REST, wakeLock:true};
+const EXK = ['name','color','duration','sides','left','right','sideRest'];
 const svg = (d, s=20) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}"><path fill="currentColor" d="${d}"/></svg>`;
 const IC = {
   play: svg('M8 5v14l11-7z',38), playS: svg('M8 5v14l11-7z',20),
@@ -146,15 +155,16 @@ const IC = {
 const uid = () => Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const byId = (arr, id) => arr.find(x => x.id === id);
+const joinSub = (...a) => a.filter(Boolean).join(' · ');
 const fmt = s => { s = Math.max(0, Math.round(s)); const h = Math.floor(s/3600), m = Math.floor(s%3600/60), x = s%60;
   return (h ? h + ':' + String(m).padStart(2,'0') : m) + ':' + String(x).padStart(2,'0'); };
 const fg = hex => { const n = parseInt((hex||'#000').slice(1),16); const r=n>>16&255, g=n>>8&255, b=n&255;
   return (0.299*r + 0.587*g + 0.114*b) > 160 ? '#111' : '#fff'; };
+const exOnly = o => { const e = {}; EXK.forEach(k => { if (o[k] !== undefined) e[k] = o[k]; }); return e; };
 
-let S = null;              // all app data
-let V = {name:'home'};     // current view
-
-/* ================= storage (swap these two functions for Firebase later) ================= */
+let S = null;
+let V = {name:'home'};
+/* ================= storage ================= */
 let MEM = null;
 const Store = {
   load(){ try { return JSON.parse(localStorage.getItem(KEY)); } catch(e){ return MEM; } },
@@ -164,7 +174,7 @@ const Store = {
   }
 };
 function save(){ S.updatedAt = Date.now(); Store.save(S); if (window.Cloud) Cloud.push(); }
-function blank(){ return {version:1, updatedAt:0, settings:{...DEF}, folders:[], workouts:[], combos:[], schedule:{}}; }
+function blank(){ return {version:2, updatedAt:0, settings:{...DEF}, folders:[], workouts:[], combos:[], schedule:{}}; }
 
 /* ---- bridge used by the Firebase module ---- */
 function getData(){ return S; }
@@ -179,51 +189,62 @@ function cloudInner(){
   return `<span>${esc(txt)}${c.email ? ' · ' + esc(c.email) : ''}${c.state === 'denied' && c.uid ? `<br>Your UID: <code>${esc(c.uid)}</code>` : ''}</span>${c.state === 'loading' ? '' : '<button onclick="Cloud.signOut()">Sign out</button>'}`;
 }
 
-
+/* ================= data normalize + migration ================= */
 function normalize(){
-if (typeof S.updatedAt !== 'number') S.updatedAt = 0;
+  if (typeof S.updatedAt !== 'number') S.updatedAt = 0;
+  S.version = 2;
   S.settings = {...DEF, ...(S.settings||{})};
   S.folders = S.folders || []; S.workouts = S.workouts || []; S.combos = S.combos || []; S.schedule = S.schedule || {};
   for (let d=0; d<7; d++) S.schedule[d] = S.schedule[d] || [];
   S.workouts.forEach(w => {
-    w.items = w.items || [];
     w.warmup = {enabled:true, duration:10, color:WARM, ...(w.warmup||{})};
     w.cooldown = {enabled:true, duration:10, color:COOL, ...(w.cooldown||{})};
     if (w.defaultRest == null) w.defaultRest = 15;
-    w.items.forEach((it,i) => { if (it.type !== 'rest') w.items[i] = {...exBase(it.type,'',PALETTE[0]), ...it}; });
+    if (!(w.rounds >= 1)) w.rounds = 1;
+    if (w.roundRest == null) w.roundRest = 30;
+    w.items = (w.items || []).filter(Boolean).map(it => {
+      if (it.type === 'rest') return {id:it.id || uid(), type:'rest', duration:it.duration ?? 15};
+      if (it.type === 'multi'){
+        /* old format: one exercise stored directly on the multi-set */
+        let ex = Array.isArray(it.exercises) && it.exercises.length ? it.exercises : [exOnly(it)];
+        ex = ex.map(e => ({...newEx('Exercise', PALETTE[0]), ...e}));
+        return {id:it.id || uid(), type:'multi', sets:it.sets >= 1 ? it.sets : 3, setRest:it.setRest ?? 10, exRest:it.exRest ?? 10, exercises:ex};
+      }
+      return {...newEx('Exercise', PALETTE[0]), ...exOnly(it), id:it.id || uid(), type:'single'};
+    });
   });
   S.combos.forEach(c => { c.workoutIds = c.workoutIds || []; if (c.gap == null) c.gap = 0; if (c.skipInner == null) c.skipInner = true; });
 }
 
-/* ================= model factories ================= */
+/* ================= model ================= */
 function newWorkout(name, folderId){
-  return {id:uid(), name:name||'New workout', folderId:folderId||null, defaultRest:S.settings.defaultRest,
+  return {id:uid(), name:name||'New workout', folderId:folderId||null, defaultRest:S.settings.defaultRest, rounds:1, roundRest:30,
     warmup:{enabled:true, duration:S.settings.warmup, color:WARM},
     cooldown:{enabled:true, duration:S.settings.cooldown, color:COOL}, items:[]};
 }
-function exBase(type, name, color){
-  return {id:uid(), type, name, color, duration:30, sets:3, setRest:10, sides:false, left:30, right:30, sideRest:5};
-}
+function newEx(name, color){ return {id:uid(), name, color, duration:30, sides:false, left:30, right:30, sideRest:5}; }
 function restItem(d){ return {id:uid(), type:'rest', duration:d}; }
-// pick a palette color not used in this workout, starting after `after`
-function pickColor(w, after){
-  const used = new Set(w.items.filter(i => i.type !== 'rest').map(i => i.color));
+const exList = it => it.type === 'multi' ? it.exercises : it.type === 'single' ? [it] : [];
+const exName = it => it.type === 'multi' ? it.exercises.map(e => e.name || 'Exercise').join(' + ') : (it.name || 'Exercise');
+const hasSides = it => exList(it).some(e => e.sides);
+function allColors(w){ return w.items.flatMap(i => exList(i).map(e => e.color)); }
+function pickColor(w, after, extra=[]){
+  const used = new Set([...allColors(w), ...extra]);
   const start = PALETTE.indexOf(after);
   for (let k=1; k<=PALETTE.length; k++){ const c = PALETTE[(start+k+PALETTE.length) % PALETTE.length]; if (!used.has(c) && c !== after) return c; }
   return PALETTE[(start+1+PALETTE.length) % PALETTE.length];
 }
-function nextColor(w){
-  const ex = w.items.filter(i => i.type !== 'rest');
-  return pickColor(w, ex.length ? ex[ex.length-1].color : null);
-}
+function nextColor(w){ const c = allColors(w); return pickColor(w, c.length ? c[c.length-1] : null); }
 function addItem(w, type){
   if (type !== 'rest' && w.items.length && w.items[w.items.length-1].type !== 'rest' && w.defaultRest > 0)
     w.items.push(restItem(w.defaultRest));
-  const it = type === 'rest' ? restItem(w.defaultRest || 15) : exBase(type, 'New exercise', nextColor(w));
+  let it;
+  if (type === 'rest') it = restItem(w.defaultRest || 15);
+  else if (type === 'single') it = {...newEx('New exercise', nextColor(w)), type:'single'};
+  else it = {id:uid(), type:'multi', sets:3, setRest:10, exRest:10, exercises:[newEx('New exercise', nextColor(w))]};
   w.items.push(it);
   return it;
 }
-// after removing an exercise at index i, remove a leftover double/leading/trailing rest
 function tidyRests(w, i){
   const a = w.items;
   if (i > 0 && a[i-1] && a[i-1].type === 'rest' && (i >= a.length || a[i].type === 'rest')) a.splice(i-1,1);
@@ -232,44 +253,60 @@ function tidyRests(w, i){
 function seed(){
   const fAbs={id:uid(),name:'Abs'}, fWarm={id:uid(),name:'Warm up & Stretch'}, fStr={id:uid(),name:'Strength'};
   S.folders.push(fWarm, fAbs, fStr);
-  const mk = (w,type,name,p) => Object.assign(addItem(w,type), {name}, p||{});
-  const abs = newWorkout('Abs basic', fAbs.id); abs.defaultRest = 15;
-  mk(abs,'single','Leg raises',{duration:40}); mk(abs,'single','Bicycle',{duration:40});
+  const mk = (w,name,p) => Object.assign(addItem(w,'single'), {name}, p||{});
+  const abs = newWorkout('Abs basic', fAbs.id); abs.defaultRest = 15; abs.rounds = 2; abs.roundRest = 30;
+  mk(abs,'Leg raises',{duration:40}); mk(abs,'Bicycle',{duration:40});
   const warm = newWorkout('Stretch warm up', fWarm.id); warm.defaultRest = 5;
-  mk(warm,'single','Arm stretch',{duration:30}); mk(warm,'single','Leg stretch',{duration:30});
-  mk(warm,'single','Hip flexor stretch',{sides:true,left:30,right:30,sideRest:5});
+  mk(warm,'Arm stretch',{duration:30}); mk(warm,'Leg stretch',{duration:30});
+  mk(warm,'Hip flexor stretch',{sides:true,left:30,right:30,sideRest:5});
   const str = newWorkout('Full body sets', fStr.id); str.defaultRest = 10;
-  ['Push-up','Squat','Sit-up'].forEach(n => mk(str,'multi',n,{sets:3,duration:30,setRest:10}));
+  const m1 = addItem(str,'multi'); m1.exercises[0].name = 'Push-up';
+  m1.exercises.push(newEx('Squat', pickColor(str, m1.exercises[0].color)));
+  const m2 = addItem(str,'multi'); m2.exercises[0].name = 'Sit-up';
   S.workouts.push(warm, abs, str);
   const combo = {id:uid(), name:'Warm up + Abs', workoutIds:[warm.id, abs.id], skipInner:true, gap:10};
   S.combos.push(combo);
   [1,3,5].forEach(d => S.schedule[d] = [{t:'w', id:str.id}]);
   [2,4].forEach(d => S.schedule[d] = [{t:'c', id:combo.id}]);
 }
-
 /* ================= segment builder ================= */
-function exSegs(it, sub, sayBase){
+function exSegs(e, sub, sayBase){
   const rc = S.settings.restColor, out = [];
-  const j = (a,b) => [a,b].filter(Boolean).join(' · ');
-  if (!it.sides) out.push({label:it.name, sub, dur:it.duration, color:it.color, kind:'work', say:sayBase});
+  if (!e.sides) out.push({label:e.name, sub, dur:e.duration, color:e.color, kind:'work', say:sayBase});
   else {
-    out.push({label:it.name, sub:j(sub,'Left'), dur:it.left, color:it.color, kind:'work', say:sayBase + ', left side'});
-    if (it.sideRest > 0) out.push({label:'Switch sides', sub:it.name, dur:it.sideRest, color:rc, kind:'switch', say:'Switch sides'});
-    out.push({label:it.name, sub:j(sub,'Right'), dur:it.right, color:it.color, kind:'work', say:'Right side'});
+    out.push({label:e.name, sub:joinSub(sub,'Left'), dur:e.left, color:e.color, kind:'work', say:sayBase + ', left side'});
+    if (e.sideRest > 0) out.push({label:'Switch sides', sub:e.name, dur:e.sideRest, color:rc, kind:'switch', say:'Switch sides'});
+    out.push({label:e.name, sub:joinSub(sub,'Right'), dur:e.right, color:e.color, kind:'work', say:'Right side'});
+  }
+  return out;
+}
+function itemSegs(it, sub0){
+  const st = S.settings, rc = st.restColor, out = [];
+  if (it.type === 'rest') return [{label:'Rest', sub:sub0, dur:it.duration, color:rc, kind:'rest', say:'Rest'}];
+  if (it.type === 'single') return exSegs(it, sub0, it.name);
+  const k = it.exercises.length;
+  for (let s=1; s<=it.sets; s++){
+    const setTxt = it.sets > 1 ? `Set ${s} of ${it.sets}` : '';
+    it.exercises.forEach((e,x) => {
+      const say = st.announceSets && it.sets > 1 && x === 0 ? `${e.name}, set ${s}` : e.name;
+      out.push(...exSegs(e, joinSub(sub0, setTxt), say));
+      if (x < k-1 && it.exRest > 0) out.push({label:'Rest', sub:joinSub(sub0, setTxt), dur:it.exRest, color:rc, kind:'rest', say:'Rest'});
+    });
+    if (s < it.sets && it.setRest > 0)
+      out.push({label:'Rest', sub:joinSub(sub0, `Next: set ${s+1} of ${it.sets}`), dur:it.setRest, color:rc, kind:'rest', say:'Rest'});
   }
   return out;
 }
 function workoutSegs(w, opt={}){
-  const st = S.settings, segs = [];
+  const st = S.settings, segs = [], R = Math.max(1, w.rounds || 1);
   if (w.warmup.enabled && !opt.noWarm) segs.push({label:'Warm up', sub:w.name, dur:w.warmup.duration, color:w.warmup.color, kind:'warm', say:'Warm up'});
-  for (const it of w.items){
-    if (it.type === 'rest') segs.push({label:'Rest', sub:'', dur:it.duration, color:st.restColor, kind:'rest', say:'Rest'});
-    else if (it.type === 'single') segs.push(...exSegs(it, '', it.name));
-    else for (let s=1; s<=it.sets; s++){
-      segs.push(...exSegs(it, it.sets>1 ? `Set ${s} of ${it.sets}` : '', st.announceSets && it.sets>1 ? `${it.name}, set ${s}` : it.name));
-      if (s < it.sets && it.setRest > 0)
-        segs.push({label:'Rest', sub:`Next: set ${s+1} of ${it.sets}`, dur:it.setRest, color:st.restColor, kind:'rest', say:'Rest'});
-    }
+  for (let r=1; r<=R; r++){
+    const rt = R > 1 ? `Round ${r} of ${R}` : '';
+    const part = w.items.flatMap(it => itemSegs(it, rt)).filter(s => s.dur > 0);
+    if (R > 1){ const f = part.find(s => s.kind === 'work'); if (f) f.say = `Round ${r}. ${f.say}`; }
+    segs.push(...part);
+    if (r < R && w.roundRest > 0)
+      segs.push({label:'Rest', sub:`Next: round ${r+1} of ${R}`, dur:w.roundRest, color:st.restColor, kind:'rest', say:`Rest. Next, round ${r+1}`});
   }
   if (w.cooldown.enabled && !opt.noCool) segs.push({label:'Cool down', sub:w.name, dur:w.cooldown.duration, color:w.cooldown.color, kind:'cool', say:'Cool down'});
   return segs.filter(s => s.dur > 0);
@@ -294,19 +331,27 @@ function finalize(segs){
 const sum = segs => segs.reduce((a,s) => a+s.dur, 0);
 const totalW = w => sum(workoutSegs(w));
 const totalC = c => sum(comboSegs(c));
-const colorsW = w => w.items.filter(x => x.type !== 'rest').map(x => x.color);
+const colorsW = w => allColors(w);
 const colorsC = c => c.workoutIds.flatMap(id => { const w = byId(S.workouts,id); return w ? colorsW(w) : []; }).slice(0,8);
 const stripeBg = cols => cols.length > 1 ? `linear-gradient(180deg,${cols.join(',')})` : (cols[0] || '#555');
 const unfiled = () => S.workouts.filter(w => !w.folderId || !byId(S.folders, w.folderId));
 const resolveRef = r => r.t === 'c' ? byId(S.combos, r.id) : byId(S.workouts, r.id);
-function summary(it){
-  const work = it.sides ? `L ${fmt(it.left)} · switch ${fmt(it.sideRest)} · R ${fmt(it.right)}` : fmt(it.duration);
-  return it.type === 'multi' ? `${it.sets} sets × ${it.sides ? '(' + work + ')' : work} · ${fmt(it.setRest)} rest between sets` : work;
+const exWork = e => e.sides ? e.left + e.sideRest + e.right : e.duration;
+const workStr = e => e.sides ? `L ${fmt(e.left)} · switch ${fmt(e.sideRest)} · R ${fmt(e.right)}` : fmt(e.duration);
+const perSet = it => it.exercises.reduce((a,e) => a + exWork(e), 0) + Math.max(0, it.exercises.length-1) * it.exRest;
+function itemTime(it){
+  if (it.type === 'rest') return it.duration;
+  if (it.type === 'single') return exWork(it);
+  return it.sets * perSet(it) + Math.max(0, it.sets-1) * it.setRest;
 }
-function itemTime(it){ const w = it.sides ? it.left + it.sideRest + it.right : it.duration;
-  return it.type === 'multi' ? it.sets*w + Math.max(0,it.sets-1)*it.setRest : w; }
+function summary(it){
+  if (it.type === 'single') return workStr(it);
+  const k = it.exercises.length, rest = `${fmt(it.setRest)} rest between sets`;
+  if (k === 1){ const e = it.exercises[0]; return `${it.sets} sets × ${e.sides ? '(' + workStr(e) + ')' : workStr(e)} · ${rest}`; }
+  return `${it.sets} sets × ${k} exercises (${fmt(perSet(it))} per set) · ${rest}`;
+}
 
-/* ================= popups (replace browser confirm/prompt/alert) ================= */
+/* ================= popups ================= */
 let MODAL = null;
 function showModal(inner, onCancel){
   if (MODAL) MODAL.cancel();
@@ -350,8 +395,7 @@ const Dialog = {
     });
   }
 };
-
-/* ================= drag to reorder (mouse + touch) ================= */
+/* ================= drag to reorder ================= */
 let DR = null;
 function dragStart(e, kind){
   if (DR || (e.pointerType === 'mouse' && e.button !== 0)) return;
@@ -365,15 +409,10 @@ function dragStart(e, kind){
   addEventListener('pointercancel', dragEnd);
   DR.iv = setInterval(autoScroll, 16);
 }
-function dragMove(e){
-  if (!DR || e.pointerId !== DR.pid) return;
-  e.preventDefault();
-  DR.y = e.clientY;
-  reposition();
-}
+function dragMove(e){ if (!DR || e.pointerId !== DR.pid) return; e.preventDefault(); DR.y = e.clientY; reposition(); }
 function reposition(){
   const {row, list, y} = DR;
-  const rows = [...list.querySelectorAll('.drow')].filter(r => r !== row);
+  const rows = [...list.querySelectorAll(':scope > .drow')].filter(r => r !== row);
   let before = null;
   for (const r of rows){ const b = r.getBoundingClientRect(); if (y < b.top + b.height/2){ before = r; break; } }
   if (before){ if (row.nextElementSibling !== before) list.insertBefore(row, before); }
@@ -391,9 +430,11 @@ function dragEnd(e){
   clearInterval(DR.iv); DR = null;
   removeEventListener('pointermove', dragMove); removeEventListener('pointerup', dragEnd); removeEventListener('pointercancel', dragEnd);
   row.classList.remove('dragging'); document.body.classList.remove('dragging-active');
-  const order = [...list.querySelectorAll('.drow')].map(r => +r.dataset.idx);
-  const owner = kind === 'combo' ? byId(S.combos, V.id) : cw();
-  const arr = owner ? (kind === 'combo' ? owner.workoutIds : owner.items) : null;
+  const order = [...list.querySelectorAll(':scope > .drow')].map(r => +r.dataset.idx);
+  let arr = null;
+  if (kind === 'combo'){ const c = byId(S.combos, V.id); arr = c && c.workoutIds; }
+  else if (kind === 'ex'){ const it = curItem(); arr = it && it.exercises; }
+  else { const w = cw(); arr = w && w.items; }
   if (arr && order.length === arr.length && order.some((v,i) => v !== i)){
     const next = order.map(k => arr[k]); arr.splice(0, arr.length, ...next); save();
   }
@@ -511,6 +552,7 @@ function markList(i){
 function go(name, params={}){ V = {name, ...params}; history.pushState(V, ''); render(); scrollTo(0,0); }
 function back(){ history.back(); }
 const cw = () => byId(S.workouts, V.id);
+const curItem = () => { const w = cw(); return w ? w.items.find(i => i.id === V.iid) : null; };
 function ctx(scope){
   if (scope === 's') return S.settings;
   if (scope === 'c') return byId(S.combos, V.id);
@@ -518,33 +560,40 @@ function ctx(scope){
   if (scope === 'w') return w;
   if (scope === 'wu') return w.warmup;
   if (scope === 'cd') return w.cooldown;
-  if (scope === 'i') return w.items.find(i => i.id === V.iid);
+  if (scope === 'i') return curItem();
+  if (scope.startsWith('e:')){ const it = curItem(); return it && it.exercises ? it.exercises.find(e => e.id === scope.slice(2)) : null; }
   if (scope.startsWith('r:')) return w.items.find(i => i.id === scope.slice(2));
   return null;
 }
-
 /* ================= UI pieces ================= */
 function dur(scope, key, v){
   v = v || 0;
   return `<span class="dur" data-s="${scope}" data-k="${key}"><input type="number" min="0" inputmode="numeric" value="${Math.floor(v/60)}" onfocus="this.select()" onchange="A.dur(this)" aria-label="minutes"><b>:</b><input type="number" min="0" inputmode="numeric" value="${String(v%60).padStart(2,'0')}" onfocus="this.select()" onchange="A.dur(this)" aria-label="seconds"></span>`;
 }
+const stepper = (scope, key, v, min, max) => `<span class="stepper">
+  <button class="act" onclick="A.step('${scope}','${key}',-1,${min},${max})" aria-label="Decrease">−</button>
+  <input class="num" type="number" min="${min}" max="${max}" inputmode="numeric" value="${v}" onfocus="this.select()" onchange="A.set('${scope}','${key}',Math.min(${max},Math.max(${min},parseInt(this.value)||${min})))">
+  <button class="act" onclick="A.step('${scope}','${key}',1,${min},${max})" aria-label="Increase">+</button></span>`;
 const sw = (scope,key,val) => `<label class="sw"><input type="checkbox" ${val?'checked':''} onchange="A.set('${scope}','${key}',this.checked)"><span></span></label>`;
 const swField = (label,scope,key,val) => `<div class="field"><span class="lbl">${label}</span>${sw(scope,key,val)}</div>`;
 const topBar = (title, right='') => `<div class="top"><button class="ic" onclick="A.back()" aria-label="Back">←</button><h1>${esc(title)}</h1>${right}</div>`;
 const handle = kind => `<span class="act handle" role="button" onpointerdown="A.dragStart(event,'${kind}')" title="Drag to reorder" aria-label="Drag to reorder">${IC.grip}</span>`;
-// order: duplicate · delete · drag
 const itemActs = it => `<div class="acts">
   <button class="act" onclick="A.dupItem('${it.id}')" title="Duplicate" aria-label="Duplicate">${IC.copy}</button>
   <button class="act del" onclick="A.delItem('${it.id}')" title="Delete" aria-label="Delete">${IC.trash}</button>
   ${handle('items')}</div>`;
+const exActs = e => `<div class="acts">
+  <button class="act" onclick="A.dupEx('${e.id}')" title="Duplicate" aria-label="Duplicate">${IC.copy}</button>
+  <button class="act del" onclick="A.delEx('${e.id}')" title="Delete" aria-label="Delete">${IC.trash}</button>
+  ${handle('ex')}</div>`;
 const rowActs = (kind, id) => `<div class="acts">
   <button class="act" onclick="A.go('${kind === 'c' ? 'combo' : 'workout'}',{id:'${id}'})" title="Edit" aria-label="Edit">${IC.edit}</button>
   <button class="play" onclick="A.play('${kind}','${id}')" aria-label="Start">${IC.playS}</button></div>`;
 
 function wRow(w){
-  const n = colorsW(w).length;
+  const n = allColors(w).length;
   return `<div class="row"><div class="stripe" style="background:${stripeBg(colorsW(w))}"></div>
-    <div class="main" onclick="A.go('workout',{id:'${w.id}'})"><div class="t">${esc(w.name)}</div><div class="s">${n} exercise${n===1?'':'s'} · ${fmt(totalW(w))}</div></div>
+    <div class="main" onclick="A.go('workout',{id:'${w.id}'})"><div class="t">${esc(w.name)}</div><div class="s">${n} exercise${n===1?'':'s'}${w.rounds > 1 ? ` · ${w.rounds} rounds` : ''} · ${fmt(totalW(w))}</div></div>
     ${rowActs('w', w.id)}</div>`;
 }
 function cRow(c){
@@ -558,6 +607,15 @@ function refSelect(handler, onlyW){
   return `<select class="grow" onchange="${handler}"><option value="">${onlyW ? '+ Add workout…' : '+ Add workout or combo…'}</option>
     ${!onlyW && S.combos.length ? `<optgroup label="Combos">${S.combos.map(c => `<option value="c:${c.id}">${esc(c.name)}</option>`).join('')}</optgroup>` : ''}
     ${S.folders.map(f => grp(f.name, S.workouts.filter(w => w.folderId === f.id))).join('')}${grp('Unfiled', unfiled())}</select>`;
+}
+function exFields(scope, e, multi){
+  return `<div class="field"><span class="lbl">Exercise name</span><input type="text" value="${esc(e.name)}" onfocus="this.select()" oninput="A.set('${scope}','name',this.value,true)" onchange="A.render()"></div>
+  <div class="field"><span class="lbl">Panel color</span><div class="swatches">${PALETTE.map(c => `<button class="swatch ${e.color===c?'on':''}" style="background:${c}" onclick="A.set('${scope}','color','${c}')" aria-label="${c}"></button>`).join('')}<input type="color" value="${e.color}" onchange="A.set('${scope}','color',this.value)" title="Custom color"></div></div>
+  ${swField('Left &amp; right sides', scope, 'sides', e.sides)}
+  ${e.sides ? `<div class="field"><span class="lbl">Left side</span>${dur(scope,'left',e.left)}</div>
+    <div class="field"><span class="lbl">Break between sides</span>${dur(scope,'sideRest',e.sideRest)}</div>
+    <div class="field"><span class="lbl">Right side</span>${dur(scope,'right',e.right)}</div>`
+  : `<div class="field"><span class="lbl">${multi ? 'Work time per set' : 'Duration'}</span>${dur(scope,'duration',e.duration)}</div>`}`;
 }
 
 /* ================= views ================= */
@@ -591,14 +649,16 @@ function vWorkout(w){
     ${p.enabled ? dur(scope,'duration',p.duration) : ''}<input type="color" value="${p.color}" onchange="A.set('${scope}','color',this.value)" title="Panel color">${sw(scope,'enabled',p.enabled)}</div>`;
   const rows = w.items.map((it,i) => it.type === 'rest'
     ? `<div class="row drow" data-idx="${i}" data-id="${it.id}"><div class="stripe" style="background:${S.settings.restColor}"></div><div class="main nolink"><div class="t" style="font-weight:500">Rest</div></div>${dur('r:'+it.id,'duration',it.duration)}${itemActs(it)}</div>`
-    : `<div class="row drow" data-idx="${i}" data-id="${it.id}"><div class="stripe" style="background:${it.color}"></div><div class="main" onclick="A.go('item',{id:'${w.id}',iid:'${it.id}'})"><div class="t">${esc(it.name)}${it.sides ? ' <span class="badge">L/R</span>' : ''}</div><div class="s">${it.type === 'multi' ? 'Multi-set · ' : ''}${summary(it)}</div></div>${itemActs(it)}</div>`).join('');
+    : `<div class="row drow" data-idx="${i}" data-id="${it.id}"><div class="stripe" style="background:${stripeBg(exList(it).map(e => e.color))}"></div><div class="main" onclick="A.go('item',{id:'${w.id}',iid:'${it.id}'})"><div class="t">${esc(exName(it))}${hasSides(it) ? ' <span class="badge">L/R</span>' : ''}</div><div class="s">${it.type === 'multi' ? 'Multi-set · ' : ''}${summary(it)}</div></div>${itemActs(it)}</div>`).join('');
   return topBar(w.name, `<button class="pri" onclick="A.play('w','${w.id}')">▶ Start</button>`) + `
   <div class="card">
     <div class="field"><span class="lbl">Name</span><input type="text" value="${esc(w.name)}" onfocus="this.select()" oninput="A.set('w','name',this.value,true)"></div>
     <div class="field"><span class="lbl">Folder</span><select onchange="A.set('w','folderId',this.value||null)"><option value="">Unfiled</option>${S.folders.map(f => `<option value="${f.id}" ${w.folderId===f.id?'selected':''}>${esc(f.name)}</option>`).join('')}</select></div>
+    <div class="field"><span class="lbl">Rounds (repeat whole workout)</span>${stepper('w','rounds',w.rounds,1,50)}</div>
+    ${w.rounds > 1 ? `<div class="field"><span class="lbl">Rest between rounds</span>${dur('w','roundRest',w.roundRest)}</div>` : ''}
     <div class="field"><span class="lbl">Default rest between exercises</span>${dur('w','defaultRest',w.defaultRest)}<button onclick="A.applyRest()">Apply to all rests</button></div>
   </div>
-  <div class="sec"><h2>Intervals · total ${fmt(totalW(w))}</h2></div>
+  <div class="sec"><h2>Intervals${w.rounds > 1 ? ` · ×${w.rounds} rounds` : ''} · total ${fmt(totalW(w))}</h2></div>
   <div class="card">${phase(w.warmup,'wu','Warm up')}<div id="dlist">${rows || '<div class="empty">Add an exercise below.</div>'}</div>${phase(w.cooldown,'cd','Cool down')}</div>
   <div class="btns"><button onclick="A.addItem('single')">+ Single set</button><button onclick="A.addItem('multi')">+ Multi-set</button><button onclick="A.addItem('rest')">+ Rest</button></div>
   <div class="btns"><button onclick="A.dupWorkout()">Duplicate workout</button><button class="dan" onclick="A.delWorkout()">Delete workout</button></div>`;
@@ -606,25 +666,32 @@ function vWorkout(w){
 
 function vItem(w, it){
   const multi = it.type === 'multi';
-  return topBar(it.name || 'Exercise') + `
-  <div class="preview" style="background:${it.color};color:${fg(it.color)}"><div class="pn">${esc(it.name)}</div><div class="pt">${fmt(itemTime(it))}</div><div>${multi ? 'Multi-set' : 'Single set'}${it.sides ? ' · Left / Right' : ''}</div></div>
+  const cols = exList(it).map(e => e.color), pc = cols[0];
+  const bg = cols.length > 1 ? `linear-gradient(90deg,${cols.join(',')})` : pc;
+  let body;
+  if (!multi) body = `<div class="card">${exFields('i', it, false)}</div>`;
+  else {
+    const k = it.exercises.length;
+    body = `<div class="sec"><h2>Applies to every exercise in this set</h2></div>
+    <div class="card">
+      <div class="field"><span class="lbl">Number of sets</span>${stepper('i','sets',it.sets,1,50)}</div>
+      <div class="field"><span class="lbl">Rest between sets</span>${dur('i','setRest',it.setRest)}</div>
+      ${k > 1 ? `<div class="field"><span class="lbl">Rest between exercises</span>${dur('i','exRest',it.exRest)}</div>` : ''}
+    </div>
+    <div class="sec"><h2>Exercises in each set · ${k}</h2></div>
+    <div id="exlist">${it.exercises.map((e,i) => `<div class="card excard drow" data-idx="${i}" data-id="${e.id}">
+      <div class="exhead"><div class="stripe" style="background:${e.color}"></div><span class="t" data-n="${i+1}">${i+1}. ${esc(e.name)}</span>${exActs(e)}</div>
+      ${exFields('e:' + e.id, e, true)}</div>`).join('')}</div>
+    <div class="btns"><button onclick="A.addEx()">+ Add exercise to this set</button></div>`;
+  }
+  return topBar(exName(it)) + `
+  <div class="preview" style="background:${bg};color:${fg(pc)}"><div class="pn">${esc(exName(it))}</div><div class="pt">${fmt(itemTime(it))}</div><div>${multi ? `Multi-set · ${it.sets} sets` : 'Single set'}${hasSides(it) ? ' · Left / Right' : ''}</div></div>
   <div style="text-align:center;margin-bottom:12px"><div class="seg">
-    <button class="${!multi?'on':''}" onclick="A.set('i','type','single')">Single set</button>
-    <button class="${multi?'on':''}" onclick="A.set('i','type','multi')">Multi-set</button></div></div>
-  <div class="card">
-    <div class="field"><span class="lbl">Exercise name</span><input type="text" value="${esc(it.name)}" onfocus="this.select()" oninput="A.set('i','name',this.value,true)" onchange="A.render()"></div>
-    <div class="field"><span class="lbl">Panel color</span><div class="swatches">${PALETTE.map(c => `<button class="swatch ${it.color===c?'on':''}" style="background:${c}" onclick="A.set('i','color','${c}')" aria-label="${c}"></button>`).join('')}<input type="color" value="${it.color}" onchange="A.set('i','color',this.value)" title="Custom color"></div></div>
-    ${multi ? `<div class="field"><span class="lbl">Number of sets</span><input class="num" type="number" min="1" max="50" value="${it.sets}" onfocus="this.select()" onchange="A.set('i','sets',Math.max(1,parseInt(this.value)||1))"></div>
-    <div class="field"><span class="lbl">Rest between sets</span>${dur('i','setRest',it.setRest)}</div>` : ''}
-    ${swField('Left &amp; right sides','i','sides',it.sides)}
-    ${it.sides ? `<div class="field"><span class="lbl">Left side</span>${dur('i','left',it.left)}</div>
-      <div class="field"><span class="lbl">Break between sides</span>${dur('i','sideRest',it.sideRest)}</div>
-      <div class="field"><span class="lbl">Right side</span>${dur('i','right',it.right)}</div>`
-    : `<div class="field"><span class="lbl">${multi ? 'Work time per set' : 'Duration'}</span>${dur('i','duration',it.duration)}</div>`}
-  </div>
-  <div class="btns"><button class="pri" onclick="A.back()">Done</button><button class="dan" onclick="A.delItem('${it.id}')">Delete exercise</button></div>`;
+    <button class="${!multi?'on':''}" onclick="A.setType('single')">Single set</button>
+    <button class="${multi?'on':''}" onclick="A.setType('multi')">Multi-set</button></div></div>
+  ${body}
+  <div class="btns"><button class="pri" onclick="A.back()">Done</button><button class="dan" onclick="A.delItem('${it.id}')">${multi ? 'Delete multi-set' : 'Delete exercise'}</button></div>`;
 }
-
 function vCombo(c){
   const rows = c.workoutIds.map((id,i) => { const w = byId(S.workouts,id);
     const body = w
@@ -681,7 +748,7 @@ function vSettings(){
   </div>
   <div class="sec"><h2>Backup</h2></div>
   <div class="card"><div class="field"><span class="lbl">Save everything as a JSON file, then import it on another device or browser.</span></div>
-    <div class="field"><button onclick="A.exportData()">Export JSON</button><button onclick="A.importData()">Import JSON</button><button class="dan" onclick="A.resetAll()">Workouts, combos and schedule will be deleted on this device AND in the cloud if signed in. Export first if unsure.</button></div></div>`;
+    <div class="field"><button onclick="A.exportData()">Export JSON</button><button onclick="A.importData()">Import JSON</button><button class="dan" onclick="A.resetAll()">Erase all data</button></div></div>`;
 }
 
 function vTimer(){
@@ -703,7 +770,7 @@ function render(){
   let html = null;
   document.body.classList.toggle('timing', V.name === 'timer');
   if (V.name === 'workout'){ const w = cw(); if (w) html = vWorkout(w); }
-  else if (V.name === 'item'){ const w = cw(), it = w && w.items.find(i => i.id === V.iid); if (it) html = vItem(w, it); }
+  else if (V.name === 'item'){ const w = cw(), it = curItem(); if (w && it) html = vItem(w, it); }
   else if (V.name === 'combo'){ const c = byId(S.combos, V.id); if (c) html = vCombo(c); }
   else if (V.name === 'schedule') html = vSchedule();
   else if (V.name === 'settings') html = vSettings();
@@ -713,7 +780,10 @@ function render(){
   document.getElementById('app').innerHTML = html;
   if (V.name === 'timer') updateTimerUI(true);
 }
-
+function flashEl(id, scroll){
+  const el = document.querySelector(`.drow[data-id="${id}"]`); if (!el) return;
+  el.classList.add('flash'); if (scroll) el.scrollIntoView({block:'center', behavior:'smooth'});
+}
 /* ================= actions ================= */
 const A = {
   go, back, render, dragStart,
@@ -721,14 +791,18 @@ const A = {
   set(scope, key, val, quiet){
     const o = ctx(scope); if (!o) return;
     o[key] = val; save();
-    if (quiet){ if (key === 'name'){ const h = document.querySelector('.top h1'); if (h) h.textContent = val || 'Untitled'; } }
-    else render();
+    if (quiet){
+      if (key === 'name'){
+        const h = document.querySelector('.top h1'); if (h) h.textContent = (V.name === 'item' ? exName(curItem()) : val) || 'Untitled';
+        if (scope.startsWith('e:')){ const t = document.querySelector(`.drow[data-id="${scope.slice(2)}"] .exhead .t`); if (t) t.textContent = `${t.dataset.n}. ${val}`; }
+      }
+    } else render();
   },
+  step(scope, key, d, min, max){ const o = ctx(scope); if (!o) return; A.set(scope, key, Math.min(max, Math.max(min, (o[key] || min) + d))); },
   dur(el){
     const p = el.parentNode, [m, s] = p.querySelectorAll('input');
     A.set(p.dataset.s, p.dataset.k, Math.max(0, (parseInt(m.value)||0)*60 + (parseInt(s.value)||0)));
   },
-  // folders
   async newFolder(){ const n = await Dialog.prompt('New folder', '', 'Create'); if (!n) return; S.folders.push({id:uid(), name:n}); save(); render(); },
   async folderMenu(id){
     const f = byId(S.folders,id); if (!f) return;
@@ -742,10 +816,12 @@ const A = {
     S.workouts.forEach(w => { if (w.folderId === id) w.folderId = null; }); S.folders = S.folders.filter(x => x.id !== id); save(); render();
   },
   toggleFolder(id){ const f = byId(S.folders,id); f.collapsed = !f.collapsed; save(); render(); },
-  // workouts
   newWorkout(folderId){ const w = newWorkout('New workout', folderId || null); S.workouts.push(w); save(); go('workout',{id:w.id}); },
-  dupWorkout(){ const w = JSON.parse(JSON.stringify(cw())); w.id = uid(); w.name += ' (copy)'; w.items.forEach(i => i.id = uid());
-    S.workouts.push(w); save(); go('workout',{id:w.id}); },
+  dupWorkout(){
+    const w = JSON.parse(JSON.stringify(cw())); w.id = uid(); w.name += ' (copy)';
+    w.items.forEach(i => { i.id = uid(); if (i.exercises) i.exercises.forEach(e => e.id = uid()); });
+    S.workouts.push(w); save(); go('workout',{id:w.id});
+  },
   async delWorkout(){
     const w = cw();
     if (!await Dialog.confirm(`Delete workout "${w.name}"?`, 'It will also be removed from any combos and from the weekly schedule.')) return;
@@ -756,32 +832,69 @@ const A = {
   },
   applyRest(){ const w = cw(); w.items.forEach(i => { if (i.type === 'rest') i.duration = w.defaultRest; }); save(); render(); },
   addItem(type){ const w = cw(), it = addItem(w, type); save(); if (type === 'rest') render(); else go('item',{id:w.id, iid:it.id}); },
-  // duplicate right below (exercises get a rest in between + a new color; no confirmation)
   dupItem(id){
     const w = cw(); if (!w) return;
     const i = w.items.findIndex(x => x.id === id); if (i < 0) return;
-    const src = w.items[i], copy = {...JSON.parse(JSON.stringify(src)), id:uid()}, ins = [];
-    if (src.type !== 'rest'){
-      copy.color = pickColor(w, src.color);
-      if (w.defaultRest > 0) ins.push(restItem(w.defaultRest));
+    const src = w.items[i], copy = JSON.parse(JSON.stringify(src)), ins = [];
+    copy.id = uid();
+    if (src.type === 'single') copy.color = pickColor(w, src.color);
+    else if (src.type === 'multi'){
+      const taken = []; let prev = src.exercises[src.exercises.length-1].color;
+      copy.exercises.forEach(e => { e.id = uid(); e.color = pickColor(w, prev, taken); taken.push(e.color); prev = e.color; });
     }
+    if (src.type !== 'rest' && w.defaultRest > 0) ins.push(restItem(w.defaultRest));
     ins.push(copy);
     w.items.splice(i+1, 0, ...ins);
-    save(); render();
-    const el = document.querySelector(`.drow[data-id="${copy.id}"]`); if (el) el.classList.add('flash');
+    save(); render(); flashEl(copy.id);
   },
   async delItem(id){
     const w = cw(); if (!w) return;
     const it = w.items.find(x => x.id === id); if (!it) return;
-    const title = it.type === 'rest' ? 'Delete this rest?' : `Delete "${it.name}"?`;
-    const msg = it.type === 'multi' ? `All ${it.sets} sets of this exercise will be removed.` : '';
+    const title = it.type === 'rest' ? 'Delete this rest?' : `Delete "${exName(it)}"?`;
+    const k = it.type === 'multi' ? it.exercises.length : 0;
+    const msg = it.type === 'multi' ? `All ${it.sets} sets${k > 1 ? ` of ${k} exercises` : ''} will be removed.` : '';
     if (!await Dialog.confirm(title, msg)) return;
     const i = w.items.findIndex(x => x.id === id); if (i < 0) return;
     w.items.splice(i,1);
     if (it.type !== 'rest') tidyRests(w, i);
     save(); if (V.name === 'item') back(); else render();
   },
-  // combos
+  async setType(t){
+    const w = cw(), it = curItem(); if (!w || !it || it.type === t) return;
+    if (t === 'multi'){
+      const e = {...newEx('', it.color), ...exOnly(it)};
+      Object.keys(it).forEach(k => { if (k !== 'id') delete it[k]; });
+      Object.assign(it, {type:'multi', sets:3, setRest:10, exRest:w.defaultRest || 10, exercises:[e]});
+      save(); render(); return;
+    }
+    const ex = it.exercises;
+    if (ex.length > 1 && !await Dialog.confirm('Switch to single set?',
+        `This multi-set has ${ex.length} exercises. The first stays here; the other ${ex.length-1} move right below as separate single-set exercises. Nothing is deleted.`, 'Switch', false)) return;
+    const i = w.items.indexOf(it);
+    const first = {...ex[0], id:it.id, type:'single'}, extra = [];
+    ex.slice(1).forEach(e => { if (w.defaultRest > 0) extra.push(restItem(w.defaultRest)); extra.push({...e, id:uid(), type:'single'}); });
+    w.items.splice(i, 1, first, ...extra);
+    save(); render();
+  },
+  addEx(){
+    const w = cw(), it = curItem(); if (!it || it.type !== 'multi') return;
+    const last = it.exercises[it.exercises.length-1];
+    const e = newEx('New exercise', pickColor(w, last ? last.color : null));
+    it.exercises.push(e); save(); render(); flashEl(e.id, true);
+  },
+  dupEx(id){
+    const w = cw(), it = curItem(); if (!it) return;
+    const i = it.exercises.findIndex(e => e.id === id); if (i < 0) return;
+    const src = it.exercises[i], copy = {...JSON.parse(JSON.stringify(src)), id:uid(), color:pickColor(w, src.color)};
+    it.exercises.splice(i+1, 0, copy); save(); render(); flashEl(copy.id);
+  },
+  async delEx(id){
+    const it = curItem(); if (!it) return;
+    if (it.exercises.length <= 1){ A.delItem(it.id); return; }
+    const e = it.exercises.find(x => x.id === id); if (!e) return;
+    if (!await Dialog.confirm(`Delete "${e.name}"?`, 'It will be removed from every set of this multi-set.')) return;
+    it.exercises = it.exercises.filter(x => x.id !== id); save(); render();
+  },
   newCombo(){ const c = {id:uid(), name:'New combo', workoutIds:[], skipInner:true, gap:0}; S.combos.push(c); save(); go('combo',{id:c.id}); },
   comboAdd(v){ if (!v) return; byId(S.combos,V.id).workoutIds.push(v.split(':')[1]); save(); render(); },
   comboDel(i){ byId(S.combos,V.id).workoutIds.splice(i,1); save(); render(); },
@@ -792,10 +905,8 @@ const A = {
     for (let d=0; d<7; d++) S.schedule[d] = S.schedule[d].filter(r => !(r.t==='c' && r.id===c.id));
     save(); back();
   },
-  // schedule
   schedAdd(d, v){ if (!v) return; const [t, id] = v.split(':'); S.schedule[d].push({t, id}); save(); render(); },
   schedDel(d, i){ S.schedule[d].splice(i,1); save(); render(); },
-  // timer controls
   toggle(){
     audio();
     if (T.done){ T.done = false; T.i = 0; T.rem = T.segs[0].dur*1000; T.cued = false; }
@@ -810,8 +921,7 @@ const A = {
   },
   jump(i){ jump(i); },
   toggleList(){ T.showList = !T.showList; document.getElementById('tList').classList.toggle('show', T.showList); markList(T.done ? T.segs.length : T.i); },
-  // settings & data
-  testVoice(){ audio(); speak('Push-up, set 1. Rest. Next, Squat.'); },
+  testVoice(){ audio(); speak('Round 2. Push-up, set 1. Rest. Next, Squat.'); },
   exportData(){
     const blob = new Blob([JSON.stringify(S, null, 2)], {type:'application/json'});
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
@@ -820,13 +930,12 @@ const A = {
   },
   importData(){ const f = document.getElementById('importFile'); f.value = ''; f.click(); },
   async resetAll(){
-    if (!await Dialog.confirm('Erase ALL data on this device?', 'Workouts, combos and schedule will be deleted. Export first if unsure.', 'Erase')) return;
+    if (!await Dialog.confirm('Erase ALL data?', 'Workouts, combos and schedule will be deleted on this device AND in the cloud if you are signed in. Export first if unsure.', 'Erase')) return;
     S = blank(); normalize(); save(); go('home');
   }
 };
 window.A = A;
-
-/* ================= init (kept last so everything above is defined first) ================= */
+/* ================= init (kept last) ================= */
 S = Store.load();
 if (!S || !Array.isArray(S.workouts)) { S = blank(); seed(); }
 normalize(); Store.save(S);
@@ -867,20 +976,9 @@ render();
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
+import { firebaseConfig, OWNER_UID } from './firebase-config.js';
 
-// 1) Paste from Firebase console > Project settings > Your apps > Config
-const firebaseConfig = {
-  apiKey: "AIzaSyCpmyi66LgzkAxLQ4eFhTJuTrL7rIvIX0E",
-  authDomain: "interval-timer-a3713.firebaseapp.com",
-  projectId: "interval-timer-a3713",
-  storageBucket: "interval-timer-a3713.firebasestorage.app",
-  messagingSenderId: "322385178334",
-  appId: "1:322385178334:web:1ea2998c3954a5e8e6dc4f"
-};
-// 2) After your first sign-in, paste your UID here (it's shown in the app). Leave '' until then.
-const OWNER_UID = 'w8jA9oXFtUMJieCdYYPvGhWVuKY2';
-
-if (firebaseConfig.apiKey && firebaseConfig.apiKey !== 'PASTE') {
+if (firebaseConfig && firebaseConfig.apiKey && firebaseConfig.apiKey !== 'PASTE') {
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
@@ -918,10 +1016,10 @@ if (firebaseConfig.apiKey && firebaseConfig.apiKey !== 'PASTE') {
     try {
       const snap = await getDoc(ref);
       const cloud = snap.exists() ? snap.data() : null;
-      if (cloud && cloud.updatedAt >= getData().updatedAt) replaceData(JSON.parse(cloud.data)); // cloud is newer
+      if (cloud && cloud.updatedAt >= getData().updatedAt) replaceData(JSON.parse(cloud.data));
       ready = true;
-      if (!cloud || cloud.updatedAt < getData().updatedAt) Cloud.push(); else status('synced'); // this device is newer
-      unsub = onSnapshot(ref, s => {            // live updates from your other devices
+      if (!cloud || cloud.updatedAt < getData().updatedAt) Cloud.push(); else status('synced');
+      unsub = onSnapshot(ref, s => {
         if (!s.exists() || s.metadata.hasPendingWrites) return;
         const r = s.data();
         if (r.updatedAt > getData().updatedAt) { replaceData(JSON.parse(r.data)); status('synced'); }
@@ -930,6 +1028,5 @@ if (firebaseConfig.apiKey && firebaseConfig.apiKey !== 'PASTE') {
   });
 }
 </script>
-
 </body>
 </html>
