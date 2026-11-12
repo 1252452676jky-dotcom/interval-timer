@@ -11,16 +11,16 @@
 <link rel="manifest" href="site.webmanifest">
 <meta name="apple-mobile-web-app-title" content="Timer">
 <style>
-:root{--bg:#121418;--card:#1c1f26;--card2:#252a33;--line:#2f3540;--text:#e9edf3;--mut:#8b94a3;--acc:#4f8cff;--danger:#ff5a5f;--r:12px}
+:root{--bg:#121418;--card:#1c1f26;--card2:#252a33;--line:#2f3540;--text:#e9edf3;--mut:#8b94a3;--acc:#4f8cff;--onacc:#fff;--danger:#ff5a5f;--off:#444b57;--flash:#2d4a7a;--r:12px;--font:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);-webkit-tap-highlight-color:transparent}
 body.timing{overflow:hidden}
 #app{max-width:780px;margin:0 auto;padding:4px 14px 80px}
 .top{display:flex;align-items:center;gap:8px;position:sticky;top:0;background:var(--bg);padding:12px 0;z-index:5}
 .top h1{font-size:20px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 button{font:inherit;color:inherit;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:9px 14px;cursor:pointer}
 button:hover{filter:brightness(1.15)}
-button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+button.pri{background:var(--acc);border-color:var(--acc);color:var(--onacc);font-weight:600}
 button.dan{color:var(--danger)}
 button.dfill{background:var(--danger);border-color:var(--danger);color:#fff;font-weight:600}
 button.ic{padding:7px 10px;min-width:38px}
@@ -37,18 +37,20 @@ button.ghost{background:transparent;border-color:transparent}
 .row .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .row .s{font-size:13px;color:var(--mut);margin-top:2px}
 .stripe{width:6px;align-self:stretch;border-radius:4px;flex:none;min-height:34px}
-.play{background:var(--acc);border:none;color:#fff;width:40px;height:40px;border-radius:50%;padding:0;flex:none;display:inline-flex;align-items:center;justify-content:center}
+.play{background:var(--acc);border:none;color:var(--onacc);width:40px;height:40px;border-radius:50%;padding:0;flex:none;display:inline-flex;align-items:center;justify-content:center}
 .empty{padding:14px;color:var(--mut);font-size:14px}
 .acts{display:flex;align-items:center;gap:14px;margin-left:6px;flex:none}
 .act{width:40px;height:40px;padding:0;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:1px solid transparent;border-radius:10px;color:var(--mut);cursor:pointer}
 .act:hover{background:var(--card2);color:var(--text);filter:none}
 .act svg{pointer-events:none}
 .act.del{color:var(--danger)}
+.act.ok{background:var(--acc);border-color:var(--acc);color:var(--onacc)}
+.act.ok:hover{background:var(--acc);color:var(--onacc);filter:brightness(1.15)}
 .act.handle{cursor:grab;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .drow.dragging{background:var(--card2);box-shadow:0 8px 24px rgba(0,0,0,.55);position:relative;z-index:3}
 body.dragging-active,body.dragging-active *{cursor:grabbing!important;-webkit-user-select:none;user-select:none}
 .drow.flash{animation:flash 1.1s ease}
-@keyframes flash{from{background:#2d4a7a}to{background:var(--card)}}
+@keyframes flash{from{background:var(--flash)}to{background:var(--card)}}
 .field{display:flex;align-items:center;gap:10px;padding:12px;border-top:1px solid var(--line);flex-wrap:wrap}
 .field .lbl{flex:1;min-width:140px;color:var(--mut)}
 input[type=text],select{font:inherit;color:var(--text);background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:9px 10px;min-width:0}
@@ -61,19 +63,19 @@ select.grow{flex:1}
 .stepper .act{border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:22px;line-height:1}
 .sw{position:relative;width:46px;height:26px;flex:none;display:inline-block}
 .sw input{opacity:0;width:0;height:0}
-.sw span{position:absolute;inset:0;background:#444b57;border-radius:20px;transition:.2s;cursor:pointer}
+.sw span{position:absolute;inset:0;background:var(--off);border-radius:20px;transition:.2s;cursor:pointer}
 .sw span:before{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
 .sw input:checked+span{background:var(--acc)}
 .sw input:checked+span:before{transform:translateX(20px)}
 .swatches{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .swatch{width:32px;height:32px;border-radius:50%;border:3px solid transparent;padding:0}
-.swatch.on{border-color:#fff}
+.swatch.on{border-color:var(--text)}
 input[type=color]{width:34px;height:34px;border:none;background:none;padding:0;cursor:pointer;flex:none}
 .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .btns button{flex:1;min-width:120px}
 .seg{display:inline-flex;background:var(--card2);border-radius:10px;padding:3px;gap:3px}
 .seg button{border:none;background:transparent;padding:7px 14px}
-.seg button.on{background:var(--acc);color:#fff}
+.seg button.on{background:var(--acc);color:var(--onacc)}
 .fold-h{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 12px;cursor:pointer;background:var(--card2);min-height:52px}
 .fold-h .t{flex:1;font-weight:700}
 .badge{font-size:12px;color:var(--mut)}
@@ -88,7 +90,7 @@ input[type=range]{flex:1;min-width:120px}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;width:min(380px,100%);box-shadow:0 20px 60px rgba(0,0,0,.6)}
 .modal h3{margin:0 0 8px;font-size:18px;word-break:break-word}
-.modal p{margin:0 0 16px;color:var(--mut);line-height:1.4}
+.modal p{margin:0 0 16px;color:var(--mut);line-height:1.4;white-space:pre-line}
 .modal input[type=text]{display:block;width:100%;margin:8px 0 16px}
 .mbtns{display:flex;gap:12px;justify-content:flex-end;margin-top:8px}
 .mbtns button{min-width:100px}
@@ -124,11 +126,26 @@ input[type=range]{flex:1;min-width:120px}
 .cloudbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--mut);margin:0 0 6px}
 .cloudbar span{flex:1;min-width:180px;word-break:break-all}
 .cloudbar:empty{display:none}
+.arrbar{display:flex;align-items:center;gap:10px;background:var(--card2);border:1px dashed var(--acc);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;color:var(--mut);font-size:14px}
+.arrbar span{flex:1}
+.ufcard{margin-top:10px}
+.wlist{min-height:52px}
+.whint{padding:14px;color:var(--mut);font-size:14px;text-align:center}
+.wlist .whint:not(:only-child){display:none}
+.moved{color:var(--acc);font-weight:600}
+.drag-slot{opacity:.3}
+.drag-lift{opacity:.95!important;background:var(--card2);box-shadow:0 12px 30px rgba(0,0,0,.5)}
+.themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.theme{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:12px;border:2px solid;text-align:left}
+.theme small{opacity:.8;font-size:12px}
+.tdots{display:flex;gap:5px}
+.tdots i{width:18px;height:18px;border-radius:50%;display:block}
 </style>
 </head>
 <body>
 <div id="app"></div>
 <input type="file" id="importFile" accept=".json,application/json" hidden>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
 /* ================= constants & helpers ================= */
 const KEY = 'intervalTimer.v1';
@@ -136,7 +153,17 @@ const PALETTE = ['#e53935','#1e88e5','#43a047','#8e24aa','#f4511e','#3949ab','#d
 const WARM = '#fdd835', COOL = '#26c6da', REST = '#455a64';
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const DEF = {tts:true, voice:'', rate:1, volume:1, countdown:'beep', startBeep:true, announceNext:true, announceSets:true,
-             defaultRest:15, warmup:10, cooldown:10, restColor:REST, wakeLock:true};
+             defaultRest:15, warmup:10, cooldown:10, restColor:REST, wakeLock:true, theme:'midnight'};
+const FONT = 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
+const THEMES = {
+  midnight:  {name:'Midnight',   scheme:'dark',  bg:'#121418', card:'#1c1f26', card2:'#252a33', line:'#2f3540', text:'#e9edf3', mut:'#8b94a3', acc:'#4f8cff', onacc:'#ffffff', danger:'#ff5a5f', off:'#444b57', flash:'#2d4a7a', r:'12px', font:FONT},
+  daylight:  {name:'Daylight',   scheme:'light', bg:'#f3f4f7', card:'#ffffff', card2:'#eceef3', line:'#d8dce3', text:'#1c2027', mut:'#667080', acc:'#2f6fed', onacc:'#ffffff', danger:'#d93838', off:'#c2c8d1', flash:'#cfe0ff', r:'12px', font:FONT},
+  ocean:     {name:'Deep Ocean', scheme:'dark',  bg:'#0a1922', card:'#0f2430', card2:'#15303e', line:'#1f4150', text:'#e2f4f8', mut:'#7fa4b2', acc:'#1fb8cc', onacc:'#04222a', danger:'#ff6b6b', off:'#2b4a58', flash:'#145566', r:'18px', font:FONT},
+  forest:    {name:'Forest',     scheme:'dark',  bg:'#0f1712', card:'#16211a', card2:'#1d2b22', line:'#2a3d30', text:'#e6efe5', mut:'#8ca290', acc:'#62c46a', onacc:'#0b1f0e', danger:'#ff6b5e', off:'#34473a', flash:'#2c5a32', r:'14px', font:FONT},
+  ember:     {name:'Ember',      scheme:'dark',  bg:'#1a1210', card:'#241916', card2:'#2f201c', line:'#45312a', text:'#f8ebe5', mut:'#b3958b', acc:'#ff7a3d', onacc:'#2a0f02', danger:'#ff4d6d', off:'#4f3b34', flash:'#6b3420', r:'10px', font:FONT},
+  synthwave: {name:'Synthwave',  scheme:'dark',  bg:'#120b1f', card:'#1b1130', card2:'#27183f', line:'#3b2662', text:'#f6eaff', mut:'#a88fca', acc:'#ff3ea5', onacc:'#ffffff', danger:'#ff5470', off:'#3e2b5e', flash:'#5a1f6e', r:'16px', font:'"Trebuchet MS",system-ui,sans-serif'},
+  arcade:    {name:'Arcade',     scheme:'dark',  bg:'#050505', card:'#0e0e0e', card2:'#1a1a1a', line:'#2d2d2d', text:'#e6ffe0', mut:'#72b874', acc:'#39ff14', onacc:'#000000', danger:'#ff3b3b', off:'#2f3a2f', flash:'#1f4a14', r:'3px',  font:'"Courier New",ui-monospace,monospace'}
+};
 const EXK = ['name','color','duration','sides','left','right','sideRest'];
 const svg = (d, s=20) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}"><path fill="currentColor" d="${d}"/></svg>`;
 const IC = {
@@ -150,6 +177,7 @@ const IC = {
   edit: svg('M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z'),
   plus: svg('M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',22),
   more: svg('M6 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4z',22),
+  check: svg('M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',22),
   close: svg('M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z')
 };
 const uid = () => Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4);
@@ -164,6 +192,7 @@ const exOnly = o => { const e = {}; EXK.forEach(k => { if (o[k] !== undefined) e
 
 let S = null;
 let V = {name:'home'};
+
 /* ================= storage ================= */
 let MEM = null;
 const Store = {
@@ -619,27 +648,53 @@ function exFields(scope, e, multi){
 }
 
 /* ================= views ================= */
-function vHome(){
-  const d = new Date().getDay();
-  const today = S.schedule[d].map(r => { const o = resolveRef(r); return o ? (r.t === 'c' ? cRow(o) : wRow(o)) : ''; }).join('');
-  const folderCard = (f, ws) => `<div class="card">
+function folderCard(f, ws){
+  return `<div class="card">
     <div class="fold-h" ${f ? `onclick="A.toggleFolder('${f.id}')"` : ''}>
       <span>${f && f.collapsed ? '▸' : '▾'}</span><span class="t">${esc(f ? f.name : 'Unfiled')}</span><span class="badge">${ws.length}</span>
       ${f ? `<div class="acts">
         <button class="act" title="New workout in this folder" aria-label="New workout in this folder" onclick="event.stopPropagation();A.newWorkout('${f.id}')">${IC.plus}</button>
         <button class="act" title="Folder options" aria-label="Folder options" onclick="event.stopPropagation();A.folderMenu('${f.id}')">${IC.more}</button></div>` : ''}
     </div>${f && f.collapsed ? '' : (ws.length ? ws.map(wRow).join('') : '<div class="empty">Empty folder</div>')}</div>`;
-  const uf = unfiled();
+}
+function arrRow(w, key){
+  const from = homeOf(w), moved = from !== key;
+  return `<div class="row wrow" data-wid="${w.id}"><div class="stripe" style="background:${stripeBg(colorsW(w))}"></div>
+    <div class="main nolink"><div class="t">${esc(w.name)}</div><div class="s">${moved ? `<span class="moved">Moving from ${esc(fname(from))}</span>` : fmt(totalW(w))}</div></div>
+    <div class="acts"><span class="act handle wgrip" role="button" title="Drag workout" aria-label="Drag workout">${IC.grip}</span></div></div>`;
+}
+function arrFolder(f){
+  const key = f ? f.id : '';
+  const ws = (ARR.lists[key] || []).map(id => byId(S.workouts, id)).filter(Boolean);
+  return `<div class="card ${f ? 'fcard' : 'ufcard'}" ${f ? `data-fid="${f.id}"` : ''}>
+    <div class="fold-h" style="cursor:default">
+      ${f ? `<span class="act handle fgrip" role="button" title="Drag folder" aria-label="Drag folder">${IC.grip}</span>` : ''}
+      <span class="t">${esc(f ? f.name : 'Unfiled')}</span><span class="badge">${ws.length}</span>
+      <div class="acts"><button class="act ok" onclick="A.arrangeDone()" title="Done" aria-label="Done arranging">${IC.check}</button></div>
+    </div>
+    <div class="wlist" data-folder="${key}">${ws.map(w => arrRow(w, key)).join('')}<div class="whint">Drop workouts here</div></div></div>`;
+}
+function vHome(){
+  const d = new Date().getDay();
+  const today = S.schedule[d].map(r => { const o = resolveRef(r); return o ? (r.t === 'c' ? cRow(o) : wRow(o)) : ''; }).join('');
+  let lists;
+  if (ARR){
+    lists = `<div class="arrbar"><span>Drag ⠿ to reorder folders or move workouts between them. Tap ✓ when done.</span><button onclick="A.arrangeCancel()">Discard</button></div>
+    <div id="flist">${ARR.order.map(id => byId(S.folders, id)).filter(Boolean).map(f => arrFolder(f)).join('')}</div>${arrFolder(null)}`;
+  } else {
+    const uf = unfiled();
+    lists = S.folders.map(f => folderCard(f, S.workouts.filter(w => w.folderId === f.id))).join('')
+      + (uf.length ? folderCard(null, uf) : '')
+      + (!S.workouts.length ? '<div class="card"><div class="empty">No workouts yet.</div></div>' : '');
+  }
   return `<div class="top"><h1>Interval Timer</h1><button class="ic" onclick="A.go('settings')" aria-label="Settings">⚙</button></div>
   <div id="cloudBar" class="cloudbar">${cloudInner()}</div>
   <div class="sec"><h2>Today · ${DAYS[d]}</h2><button class="ghost" onclick="A.go('schedule')">Edit week</button></div>
   <div class="card">${today || '<div class="empty">Nothing scheduled today. Tap "Edit week" to assign workouts to days.</div>'}</div>
   <div class="sec"><h2>Combos</h2><button class="ghost" onclick="A.newCombo()">+ New combo</button></div>
   <div class="card">${S.combos.map(cRow).join('') || '<div class="empty">Combine two or more workouts to run them back-to-back.</div>'}</div>
-  <div class="sec"><h2>Workouts</h2><button class="ghost" onclick="A.newFolder()">+ Folder</button><button class="ghost" onclick="A.newWorkout()">+ Workout</button></div>
-  ${S.folders.map(f => folderCard(f, S.workouts.filter(w => w.folderId === f.id))).join('')}
-  ${uf.length ? folderCard(null, uf) : ''}
-  ${!S.workouts.length ? '<div class="card"><div class="empty">No workouts yet.</div></div>' : ''}
+  <div class="sec"><h2>Workouts</h2>${ARR ? '' : '<button class="ghost" onclick="A.newFolder()">+ Folder</button><button class="ghost" onclick="A.newWorkout()">+ Workout</button>'}</div>
+  ${lists}
   <div class="btns"><button onclick="A.exportData()">Export JSON</button><button onclick="A.importData()">Import JSON</button></div>`;
 }
 
@@ -697,16 +752,18 @@ function vCombo(c){
     const body = w
       ? `<div class="stripe" style="background:${stripeBg(colorsW(w))}"></div><div class="main" onclick="A.go('workout',{id:'${w.id}'})"><div class="t">${esc(w.name)}</div><div class="s">${esc(byId(S.folders,w.folderId)?.name || 'Unfiled')} · ${fmt(totalW(w))}</div></div>`
       : `<div class="stripe"></div><div class="main nolink"><div class="t">(deleted workout)</div></div>`;
-    return `<div class="row drow" data-idx="${i}">${body}<div class="acts">
-      <button class="act del" onclick="A.comboDel(${i})" title="Remove from combo" aria-label="Remove from combo">${IC.close}</button>${handle('combo')}</div></div>`; }).join('');
+    return `<div class="row crow" data-idx="${i}">${body}<div class="acts">
+      <button class="act del" onclick="A.comboDel(${i})" title="Remove from combo" aria-label="Remove from combo">${IC.close}</button>
+      <span class="act handle cgrip" role="button" title="Drag to reorder" aria-label="Drag to reorder">${IC.grip}</span></div></div>`; }).join('');
   return topBar(c.name, `<button class="pri" onclick="A.play('c','${c.id}')">▶ Start</button>`) + `
   <div class="card">
-    <div class="field"><span class="lbl">Name</span><input type="text" value="${esc(c.name)}" onfocus="this.select()" oninput="A.set('c','name',this.value,true)"></div>
+    <div class="field"><span class="lbl">Name</span><input type="text" value="${esc(c.name)}" onfocus="this.select()" oninput="A.set('c','name',this.value,true)" onchange="A.comboNameDone()"></div>
+    <div class="field"><span class="lbl" style="font-size:13px">${c.autoName ? 'Auto-named from its workouts. Type a name to keep your own.' : 'Custom name. Clear it to go back to automatic naming.'}</span></div>
     ${swField('Only first warm up &amp; last cool down','c','skipInner',c.skipInner)}
     <div class="field"><span class="lbl">Rest between workouts</span>${dur('c','gap',c.gap)}</div>
   </div>
   <div class="sec"><h2>Workouts in order · ${fmt(totalC(c))}</h2></div>
-  <div class="card"><div id="dlist">${rows || '<div class="empty">Add two or more workouts. The original workouts stay in their folders.</div>'}</div><div class="field">${refSelect('A.comboAdd(this.value)', true)}</div></div>
+  <div class="card"><div id="clist">${rows || '<div class="empty">Add two or more workouts. The original workouts stay in their folders.</div>'}</div><div class="field">${refSelect('A.comboAdd(this.value)', true)}</div></div>
   <div class="btns"><button class="dan" onclick="A.delCombo()">Delete combo</button></div>`;
 }
 
@@ -723,7 +780,13 @@ function vSchedule(){
 function vSettings(){
   const st = S.settings;
   const vs = [...VOICES].sort((a,b) => a.lang.localeCompare(b.lang) || a.name.localeCompare(b.name));
+  const themeBtn = ([id, t]) => { const on = st.theme === id;
+    return `<button class="theme" style="background:${t.bg};color:${t.text};border-color:${on ? t.acc : t.line};border-radius:${t.r};font-family:${t.font.replace(/"/g,"'")}" onclick="A.set('s','theme','${id}')">
+      <span class="tdots"><i style="background:${t.card2}"></i><i style="background:${t.acc}"></i><i style="background:${t.danger}"></i></span>
+      <b>${esc(t.name)}</b>${on ? '<small>✓ In use</small>' : ''}</button>`; };
   return topBar('Settings') + `
+  <div class="sec"><h2>Theme</h2></div>
+  <div class="themes">${Object.entries(THEMES).map(themeBtn).join('')}</div>
   <div class="sec"><h2>Voice (text-to-speech)</h2></div>
   <div class="card">
     ${swField('Speak exercise names and "rest"','s','tts',st.tts)}
@@ -767,6 +830,7 @@ function vTimer(){
 }
 
 function render(){
+  applyTheme();
   let html = null;
   document.body.classList.toggle('timing', V.name === 'timer');
   if (V.name === 'workout'){ const w = cw(); if (w) html = vWorkout(w); }
@@ -779,10 +843,83 @@ function render(){
   if (html == null){ V = {name:'home'}; history.replaceState(V,''); html = vHome(); }
   document.getElementById('app').innerHTML = html;
   if (V.name === 'timer') updateTimerUI(true);
+  mountSortables();
 }
 function flashEl(id, scroll){
   const el = document.querySelector(`.drow[data-id="${id}"]`); if (!el) return;
   el.classList.add('flash'); if (scroll) el.scrollIntoView({block:'center', behavior:'smooth'});
+}
+
+/* ================= themes ================= */
+function applyTheme(){
+  const t = THEMES[S.settings.theme] || THEMES.midnight, st = document.documentElement.style;
+  ['bg','card','card2','line','text','mut','acc','onacc','danger','off','flash','r','font'].forEach(k => st.setProperty('--' + k, t[k]));
+  st.colorScheme = t.scheme;
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t.bg;
+}
+
+/* ================= combo auto-name ================= */
+function autoName(c){
+  if (!c || !c.autoName) return;
+  const names = c.workoutIds.map(id => byId(S.workouts, id)?.name).filter(Boolean);
+  c.name = names.length ? names.join(' + ') : 'New combo';
+}
+
+/* ================= arrange mode + combo order (SortableJS) ================= */
+let ARR = null;
+const homeOf = w => (w.folderId && byId(S.folders, w.folderId)) ? w.folderId : '';
+const fname = id => (id && byId(S.folders, id)?.name) || 'Unfiled';
+const SORT = {
+  animation:200, easing:'cubic-bezier(.2,.8,.2,1)',
+  forceFallback:true, fallbackOnBody:true, fallbackTolerance:4,
+  scroll:true, scrollSensitivity:90, scrollSpeed:14, bubbleScroll:true,
+  ghostClass:'drag-slot', fallbackClass:'drag-lift',
+  onChoose:() => document.body.classList.add('dragging-active'),
+  onUnchoose:() => document.body.classList.remove('dragging-active')
+};
+function arrangeStart(){
+  if (!window.Sortable){ Dialog.alert('Drag tool did not load', 'Check your internet connection and reload the page.'); return; }
+  const lists = {'': unfiled().map(w => w.id)};
+  S.folders.forEach(f => { lists[f.id] = S.workouts.filter(w => w.folderId === f.id).map(w => w.id); });
+  ARR = {order: S.folders.map(f => f.id), lists};
+  if (V.name !== 'home') go('home'); else { render(); scrollTo(0, 0); }
+}
+function readArrange(){
+  const fl = document.getElementById('flist'); if (!ARR || !fl) return;
+  ARR.order = [...fl.querySelectorAll(':scope > .fcard')].map(n => n.dataset.fid);
+  document.querySelectorAll('.wlist').forEach(l => {
+    ARR.lists[l.dataset.folder] = [...l.querySelectorAll(':scope > .wrow')].map(n => n.dataset.wid);
+  });
+}
+function arrangeMoves(){
+  const out = [];
+  Object.entries(ARR.lists).forEach(([key, ids]) => ids.forEach(id => {
+    const w = byId(S.workouts, id);
+    if (w && homeOf(w) !== key) out.push(`• ${w.name}: ${fname(homeOf(w))} → ${fname(key)}`);
+  }));
+  return out;
+}
+function mountSortables(){
+  if (!window.Sortable) return;
+  const later = fn => () => setTimeout(fn, 0);
+  if (V.name === 'home' && ARR){
+    const fl = document.getElementById('flist');
+    if (fl) Sortable.create(fl, {...SORT, handle:'.fgrip', draggable:'.fcard', onEnd: later(() => { readArrange(); render(); })});
+    document.querySelectorAll('.wlist').forEach(l => Sortable.create(l, {...SORT, group:'workouts', handle:'.wgrip', draggable:'.wrow',
+      onEnd: later(() => { readArrange(); render(); })}));
+  }
+  if (V.name === 'combo'){
+    const cl = document.getElementById('clist');
+    if (cl) Sortable.create(cl, {...SORT, handle:'.cgrip', draggable:'.crow', onEnd: later(comboReorder)});
+  }
+}
+function comboReorder(){
+  const c = byId(S.combos, V.id), l = document.getElementById('clist'); if (!c || !l) return;
+  const order = [...l.querySelectorAll(':scope > .crow')].map(n => +n.dataset.idx);
+  if (order.length === c.workoutIds.length && order.some((v,i) => v !== i)){
+    c.workoutIds = order.map(k => c.workoutIds[k]); autoName(c); save();
+  }
+  render();
 }
 /* ================= actions ================= */
 const A = {
@@ -790,7 +927,12 @@ const A = {
   play: openTimer,
   set(scope, key, val, quiet){
     const o = ctx(scope); if (!o) return;
-    o[key] = val; save();
+    o[key] = val;
+    if (key === 'name'){
+      if (scope === 'c') o.autoName = false;
+      if (scope === 'w') S.combos.forEach(c => autoName(c));
+    }
+    save();
     if (quiet){
       if (key === 'name'){
         const h = document.querySelector('.top h1'); if (h) h.textContent = (V.name === 'item' ? exName(curItem()) : val) || 'Untitled';
@@ -806,8 +948,37 @@ const A = {
   async newFolder(){ const n = await Dialog.prompt('New folder', '', 'Create'); if (!n) return; S.folders.push({id:uid(), name:n}); save(); render(); },
   async folderMenu(id){
     const f = byId(S.folders,id); if (!f) return;
-    const v = await Dialog.menu(f.name, [{label:'New workout in this folder', v:'new'}, {label:'Rename folder', v:'ren'}, {label:'Delete folder', v:'del', danger:true}]);
-    if (v === 'new') A.newWorkout(id); else if (v === 'ren') A.renameFolder(id); else if (v === 'del') A.delFolder(id);
+    const v = await Dialog.menu(f.name, [
+      {label:'New workout in this folder', v:'new'},
+      {label:'Arrange folders & workouts', v:'arr'},
+      {label:'Rename folder', v:'ren'},
+      {label:'Delete folder', v:'del', danger:true}]);
+    if (v === 'new') A.newWorkout(id);
+    else if (v === 'arr') arrangeStart();
+    else if (v === 'ren') A.renameFolder(id);
+    else if (v === 'del') A.delFolder(id);
+  },
+  async arrangeDone(){
+    if (!ARR) return;
+    readArrange();
+    const moves = arrangeMoves();
+    if (moves.length && !await Dialog.confirm(
+        `Move ${moves.length} workout${moves.length > 1 ? 's' : ''} to another folder?`,
+        moves.join('\n') + '\n\nCancel keeps you in arrange mode so you can drag them back.', 'Move', false)) return;
+    const folders = ARR.order.map(id => byId(S.folders, id)).filter(Boolean);
+    S.folders.forEach(f => { if (!folders.includes(f)) folders.push(f); });
+    const seen = new Set(), ws = [];
+    [...ARR.order, ''].forEach(key => (ARR.lists[key] || []).forEach(id => {
+      const w = byId(S.workouts, id);
+      if (w && !seen.has(id)){ w.folderId = key || null; ws.push(w); seen.add(id); }
+    }));
+    S.workouts.forEach(w => { if (!seen.has(w.id)) ws.push(w); });
+    S.folders = folders; S.workouts = ws; ARR = null;
+    save(); render();
+  },
+  async arrangeCancel(){
+    if (!await Dialog.confirm('Discard changes?', 'Folders and workouts go back to how they were before you started arranging.', 'Discard')) return;
+    ARR = null; render();
   },
   async renameFolder(id){ const f = byId(S.folders,id); const n = await Dialog.prompt('Rename folder', f.name); if (!n) return; f.name = n; save(); render(); },
   async delFolder(id){
@@ -826,7 +997,7 @@ const A = {
     const w = cw();
     if (!await Dialog.confirm(`Delete workout "${w.name}"?`, 'It will also be removed from any combos and from the weekly schedule.')) return;
     S.workouts = S.workouts.filter(x => x.id !== w.id);
-    S.combos.forEach(c => c.workoutIds = c.workoutIds.filter(id => id !== w.id));
+    S.combos.forEach(c => { c.workoutIds = c.workoutIds.filter(id => id !== w.id); autoName(c); });
     for (let d=0; d<7; d++) S.schedule[d] = S.schedule[d].filter(r => !(r.t==='w' && r.id===w.id));
     save(); back();
   },
@@ -895,9 +1066,14 @@ const A = {
     if (!await Dialog.confirm(`Delete "${e.name}"?`, 'It will be removed from every set of this multi-set.')) return;
     it.exercises = it.exercises.filter(x => x.id !== id); save(); render();
   },
-  newCombo(){ const c = {id:uid(), name:'New combo', workoutIds:[], skipInner:true, gap:0}; S.combos.push(c); save(); go('combo',{id:c.id}); },
-  comboAdd(v){ if (!v) return; byId(S.combos,V.id).workoutIds.push(v.split(':')[1]); save(); render(); },
-  comboDel(i){ byId(S.combos,V.id).workoutIds.splice(i,1); save(); render(); },
+  newCombo(){ const c = {id:uid(), name:'New combo', autoName:true, workoutIds:[], skipInner:true, gap:0}; S.combos.push(c); save(); go('combo',{id:c.id}); },
+  comboAdd(v){ if (!v) return; const c = byId(S.combos,V.id); c.workoutIds.push(v.split(':')[1]); autoName(c); save(); render(); },
+  comboDel(i){ const c = byId(S.combos,V.id); c.workoutIds.splice(i,1); autoName(c); save(); render(); },
+  comboNameDone(){
+    const c = byId(S.combos,V.id); if (!c) return;
+    if (!String(c.name || '').trim()){ c.autoName = true; autoName(c); }
+    save(); render();
+  },
   async delCombo(){
     const c = byId(S.combos,V.id);
     if (!await Dialog.confirm(`Delete combo "${c.name}"?`, 'The original workouts are kept in their folders.')) return;
@@ -935,6 +1111,7 @@ const A = {
   }
 };
 window.A = A;
+
 /* ================= init (kept last) ================= */
 S = Store.load();
 if (!S || !Array.isArray(S.workouts)) { S = blank(); seed(); }
